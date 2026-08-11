@@ -10,7 +10,8 @@ import os
 import re
 import hashlib
 import time
-from datetime import datetime
+import argparse
+from datetime import datetime, timezone, timedelta
 from urllib.parse import quote
 
 PUSHPLUS_TOKEN = os.environ.get('PUSHPLUS_TOKEN', '')
@@ -377,4 +378,21 @@ def main():
 
 
 if __name__ == '__main__':
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--wait-until', type=int, help='Wait until this Beijing hour (0-23) before pushing')
+    args = parser.parse_args()
+
+    if args.wait_until is not None:
+        # 计算北京时间当前小时
+        utc_now = datetime.now(timezone.utc)
+        bj_tz = timezone(timedelta(hours=8))
+        bj_now = utc_now.astimezone(bj_tz)
+        current_hour = bj_now.hour
+
+        if current_hour < args.wait_until:
+            wait_seconds = (args.wait_until - current_hour) * 3600 - bj_now.minute * 60 - bj_now.second
+            print(f"当前北京时间 {bj_now.strftime('%H:%M:%S')}，等待到 {args.wait_until}:00 再推送（约{wait_seconds//60}分钟）")
+            time.sleep(wait_seconds)
+            print(f"已到 {args.wait_until}:00，开始执行！")
+
     main()
