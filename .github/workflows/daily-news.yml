@@ -2,14 +2,13 @@ name: Daily News Push
 
 on:
   schedule:
-    # 每天北京时间9:00 (UTC 1:00)
-    - cron: '0 1 * * *'
-  workflow_dispatch: # 支持手动触发测试
+    # 提前到 UTC 0:00 触发（北京8:00），脚本内等到9:00再推送
+    - cron: '0 0 * * *'
+  workflow_dispatch:
 
 jobs:
   push-news:
     runs-on: ubuntu-latest
-
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -20,10 +19,11 @@ jobs:
           python-version: '3.11'
 
       - name: Install dependencies
-        run: |
-          pip install requests
+        run: pip install requests
 
-      - name: Run news push script
+      - name: Wait until 9:00 AM Beijing time, then push
         env:
           PUSHPLUS_TOKEN: ${{ secrets.PUSHPLUS_TOKEN }}
-        run: python main.py
+        run: |
+          echo "Triggered at 2026-08-11 11:12:30 UTC"
+          python main.py --wait-until 9
