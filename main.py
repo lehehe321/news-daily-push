@@ -344,8 +344,20 @@ def push_to_wechat(title, content):
         return False
 
 
-def main():
-    today = datetime.now().strftime('%Y年%m月%d日')
+def main(marker=None):
+    bj_tz = timezone(timedelta(hours=8))
+    today = datetime.now(bj_tz).strftime('%Y年%m月%d日')
+    today_marker = datetime.now(bj_tz).strftime('%Y-%m-%d')
+
+    # 去重检查：当天已推送过则跳过（支持多点触发只推一次）
+    if marker:
+        if os.path.exists(marker):
+            with open(marker, 'r', encoding='utf-8') as fh:
+                last_pushed = fh.read().strip()
+            if last_pushed == today_marker:
+                print(f"【{today_marker}】今天已推送过，跳过本次任务")
+                return
+
     print(f"=== 开始采集 {today} 的通信与AI新闻 ===")
 
     # 搜索通信新闻（多源）
@@ -370,6 +382,11 @@ def main():
         result = push_to_wechat(title, content)
         if result:
             print("推送成功!")
+            # 写入去重标记
+            if marker:
+                with open(marker, 'w', encoding='utf-8') as fh:
+                    fh.write(today_marker)
+                print(f"已写入推送标记: {today_marker}")
         else:
             print("推送失败!")
     else:
@@ -380,6 +397,7 @@ def main():
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('--wait-until', type=int, help='Wait until this Beijing hour (0-23) before pushing')
+    parser.add_argument('--marker', type=str, help='Marker file path for daily dedup')
     args = parser.parse_args()
 
     if args.wait_until is not None:
@@ -395,4 +413,4 @@ if __name__ == '__main__':
             time.sleep(wait_seconds)
             print(f"已到 {args.wait_until}:00，开始执行！")
 
-    main()
+    main(marker=args.marker)
