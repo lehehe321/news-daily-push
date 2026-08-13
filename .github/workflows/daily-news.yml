@@ -2,9 +2,15 @@ name: Daily News Push
 
 on:
   schedule:
-    # 提前到 UTC 0:00 触发（北京8:00），脚本内等到9:00再推送
-    - cron: '0 0 * * *'
+    # 北京时间 8:10 / 8:40 / 9:05 多点触发（避开整点排队高峰）
+    # 前两个触发点执行时间若在9点前，脚本内等到9:00再推送；9:05为兜底
+    - cron: '10 0 * * *'
+    - cron: '40 0 * * *'
+    - cron: '5 1 * * *'
   workflow_dispatch:
+
+permissions:
+  contents: write
 
 jobs:
   push-news:
@@ -21,9 +27,17 @@ jobs:
       - name: Install dependencies
         run: pip install requests
 
-      - name: Wait until 9:00 AM Beijing time, then push
+      - name: Wait until 9:00 AM Beijing time, then push (daily dedup)
         env:
           PUSHPLUS_TOKEN: ${{ secrets.PUSHPLUS_TOKEN }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          echo "Triggered at 2026-08-11 11:12:30 UTC"
-          python main.py --wait-until 9
+          python main.py --wait-until 9 --marker .last_push.txt
+          # 若当天已推送过，main.py 会直接退出且不更新标记文件
+          git config user.name "news-push-bot"
+          git config user.email "news-push-bot@users.noreply.github.com"
+          git add .last_push.txt
+          if ! git diff --cached --quiet; then
+            git commit -m "update daily push marker"
+            git push origin main
+          fi
