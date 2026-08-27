@@ -201,7 +201,7 @@ def search_rss_feed(feed_url, keywords_list, count=9, source_name='RSS'):
                 desc = re.search(r'<description>(.*?)</description>', item, re.DOTALL)
             pub_date = re.search(r'<pubDate>(.*?)</pubDate>', item)
             title_text = title.group(1).strip() if title else ''
-            if not title_text or not matches_keywords(title_text, keywords):
+            if not title_text or not matches_keywords(title_text, keywords_list):
                 continue
             abstract = desc.group(1).strip() if desc else ''
             abstract = re.sub(r'<[^>]+>', '', abstract)
