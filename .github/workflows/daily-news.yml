@@ -1,38 +1,34 @@
 name: Daily News Push
-
 on:
   schedule:
-    # 北京时间 8:10 / 8:40 / 9:05 多点触发（避开整点排队高峰）
-    # 前两个触发点执行时间若在9点前，脚本内等到9:00再推送；9:05为兜底
-    - cron: '10 0 * * *'
-    - cron: '40 0 * * *'
-    - cron: '5 1 * * *'
+    # 北京时间 3:50 / 4:20 / 5:05 提前触发 + 8:30 兜底
+    # 提前触发点即使遇到 GitHub 排队延迟 2-4 小时，执行时仍在 9 点前，
+    # 脚本会精确等待到 09:00 再推送；8:30 兜底处理凌晨任务全部失败的极端情况
+    - cron: '50 19 * * *'
+    - cron: '20 20 * * *'
+    - cron: '5 21 * * *'
+    - cron: '30 0 * * *'
   workflow_dispatch:
-
 permissions:
   contents: write
-
 jobs:
   push-news:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
-
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
           python-version: '3.11'
-
       - name: Install dependencies
         run: pip install requests
-
-      - name: Wait until 9:00 AM Beijing time, then push (daily dedup)
+      - name: Wait until 09:00 Beijing time, then push (daily dedup)
         env:
           PUSHPLUS_TOKEN: ${{ secrets.PUSHPLUS_TOKEN }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          python main.py --wait-until 9 --marker .last_push.txt
+          python main.py --wait-until 09:00 --marker .last_push.txt
           # 若当天已推送过，main.py 会直接退出且不更新标记文件
           git config user.name "news-push-bot"
           git config user.email "news-push-bot@users.noreply.github.com"
